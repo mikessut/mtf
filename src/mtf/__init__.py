@@ -8,8 +8,7 @@ import logging
 # Testing
 import matplotlib.pyplot as plt
 
-log = logging.getLogger(__name__)
-log.setLevel("DEBUG")
+log = logging.getLogger(f"{__package__}.{__name__}")
 
 
 VERT_KERNEL = np.array([
@@ -28,18 +27,26 @@ OVERSAMPLING = 10
 
 
 def fit_line(img: np.ndarray, sigma=5, edge_threshold=0.75) -> Line:
+    img = img.copy()
+    img -= img.min()
+    img = img / img.max()
+
     blurred = gaussian_filter(img, sigma)
 
-    vconv = np.abs(convolve(blurred, VERT_KERNEL))
-    hconv = np.abs(convolve(blurred, HORZ_KERNEL))
+    convs = [
+        convolve(blurred, HORZ_KERNEL),
+        convolve(blurred, -HORZ_KERNEL),
+        convolve(blurred, VERT_KERNEL),
+        convolve(blurred, -VERT_KERNEL),
+    ]
 
-    if vconv.sum() > hconv.sum():
-        # vertical edge
-        conv = vconv
-        log.debug("Vertical edge detected.")
-    else:
-        conv = hconv
+    i = np.argmax([conv.sum() for conv in convs])
+    conv = convs[i]
+
+    if i in [0, 1]:
         log.debug("Horizontal edge detected.")
+    else:
+        log.debug("Vertical edge detected.")
 
     conv = conv / conv.max()
 
